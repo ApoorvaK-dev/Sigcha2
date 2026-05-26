@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Bold white speech bubble -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 28,26 h 52 a 10,10 0 0 1 10,10 v 28 a 10,10 0 0 1 -10,10 H 52 L 35,88 V 74 H 28 a 10,10 0 0 1 -10,-10 V 36 a 10,10 0 0 1 10,-10 Z" />
+        
+    <!-- Glowing internal teal connection star -->
+    <path
+        android:fillColor="#128C7E"
+        android:pathData="M 54,34 l 4.5,9.2 l 10.1,1.5 l -7.3,7.1 l 1.7,10.1 l -9,-4.7 l -9,4.7 l 1.7,-10.1 l -7.3,-7.1 l 10.1,-1.5 z" />
+</vector>

@@ -1,0 +1,6 @@
+{
+  "name": "Sigcha",
+  "description": "Sigcha is a sleek WhatsApp clone and social media feed app with real-time Firebase Firestore support and local SQLite caching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
