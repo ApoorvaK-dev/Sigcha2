@@ -25,6 +25,8 @@ sealed class Screen {
     data class Conversation(val chatId: String, val chatTitle: String, val isGroup: Boolean = false) : Screen()
     object SocialFeed : Screen()
     object Settings : Screen()
+    object Authentication : Screen()
+    object ExploreUsers : Screen()
 }
 
 class SigchaViewModel(application: Application) : AndroidViewModel(application) {
@@ -151,6 +153,56 @@ class SigchaViewModel(application: Application) : AndroidViewModel(application) 
 
     fun isFirestoreConfigured(): Boolean {
         return firestoreManager.isConfigured()
+    }
+
+    fun signUp(
+        email: String,
+        passwordPlain: String,
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.signUp(email, passwordPlain, username, profilePictureUrl, bio, displayName, onResult)
+        }
+    }
+
+    fun login(email: String, passwordPlain: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            repository.login(email, passwordPlain, onResult)
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            repository.logout()
+            navigateTo(Screen.ChatList)
+        }
+    }
+
+    fun updateProfile(
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.updateProfile(username, profilePictureUrl, bio, displayName, onResult)
+        }
+    }
+
+    fun fetchRegisteredUsers(onComplete: (List<UserEntity>) -> Unit) {
+        repository.getRegisteredUsers(onComplete)
+    }
+
+    fun startOneOnOneChat(otherUser: UserEntity) {
+        viewModelScope.launch {
+            val chat = repository.getOrCreateOneOnOneChat(otherUser)
+            navigateTo(Screen.Conversation(chat.id, chat.title, false))
+        }
     }
 
     override fun onCleared() {

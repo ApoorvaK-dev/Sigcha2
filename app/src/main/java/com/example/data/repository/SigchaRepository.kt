@@ -125,6 +125,185 @@ class SigchaRepository(
         dao.insertUser(user)
     }
 
+    suspend fun signUp(
+        email: String,
+        passwordPlain: String,
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val passwordHash = firestoreManager.hashPassword(passwordPlain)
+        val user = UserEntity(
+            id = email,
+            displayName = displayName.ifEmpty { username },
+            statusMessage = bio,
+            avatarUrl = profilePictureUrl.ifEmpty { "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" },
+            isCurrentUser = false,
+            username = username,
+            bio = bio,
+            profilePictureUrl = profilePictureUrl,
+            passwordHash = passwordHash
+        )
+
+        if (firestoreManager.isConnected.value) {
+            firestoreManager.registerUserInFirestore(
+                email = email,
+                passwordPlain = passwordPlain,
+                username = username,
+                profilePictureUrl = user.avatarUrl,
+                bio = bio,
+                displayName = user.displayName
+            ) { success, errMsg ->
+                if (success) {
+                    repositoryScope.launch {
+                        dao.insertUser(user)
+                    }
+                }
+                onResult(success, errMsg)
+            }
+        } else {
+            val existing = dao.getUserByEmail(email)
+            if (existing != null) {
+                onResult(false, "User with this email already exists locally.")
+                return
+            }
+            dao.insertUser(user)
+            onResult(true, null)
+        }
+    }
+
+    suspend fun login(
+        email: String,
+        passwordPlain: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        if (firestoreManager.isConnected.value) {
+            firestoreManager.loginUserInFirestore(email, passwordPlain) { user, errMsg ->
+                if (user != null) {
+                    repositoryScope.launch {
+                        dao.clearCurrentUser()
+                        dao.insertUser(user)
+                        onResult(true, null)
+                    }
+                } else {
+                    onResult(false, errMsg)
+                }
+            }
+        } else {
+            val user = dao.getUserByEmail(email)
+            if (user != null) {
+                val passwordHash = firestoreManager.hashPassword(passwordPlain)
+                if (user.passwordHash == passwordHash) {
+                    dao.clearCurrentUser()
+                    dao.insertUser(user.copy(isCurrentUser = true))
+                    onResult(true, null)
+                } else {
+                    onResult(false, "Invalid secure credentials.")
+                }
+            } else {
+                onResult(false, "Account not found locally.")
+            }
+        }
+    }
+
+    suspend fun logout() {
+        dao.clearCurrentUser()
+    }
+
+    suspend fun updateProfile(
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        val currentUser = dao.getCurrentUserSync()
+        if (currentUser == null) {
+            onResult(false)
+            return
+        }
+
+        val updated = currentUser.copy(
+            username = username,
+            displayName = displayName,
+            avatarUrl = profilePictureUrl,
+            profilePictureUrl = profilePictureUrl,
+            statusMessage = bio,
+            bio = bio
+        )
+
+        dao.insertUser(updated)
+
+        if (firestoreManager.isConnected.value) {
+            firestoreManager.updateUserProfileInFirestore(
+                email = currentUser.id,
+                username = username,
+                profilePictureUrl = profilePictureUrl,
+                bio = bio,
+                displayName = displayName
+            ) { success ->
+                onResult(success)
+            }
+        } else {
+            onResult(true)
+        }
+    }
+
+    fun getRegisteredUsers(onComplete: (List<UserEntity>) -> Unit) {
+        if (firestoreManager.isConnected.value) {
+            firestoreManager.fetchAllRegisteredUsers { users ->
+                repositoryScope.launch {
+                    val me = dao.getCurrentUserSync()
+                    users.forEach {
+                        if (it.id != me?.id) {
+                            dao.insertUser(it.copy(isCurrentUser = false))
+                        }
+                    }
+                }
+                onComplete(users)
+            }
+        } else {
+            repositoryScope.launch {
+                val list = arrayListOf<UserEntity>()
+                dao.getAllUsers().firstOrNull()?.let { all ->
+                    val me = dao.getCurrentUserSync()
+                    all.forEach {
+                        if (it.id != me?.id) {
+                            list.add(it)
+                        }
+                    }
+                }
+                onComplete(list)
+            }
+        }
+    }
+
+    suspend fun getOrCreateOneOnOneChat(otherUser: UserEntity): ChatEntity {
+        val me = dao.getCurrentUserSync() ?: UserEntity("me", "Sigcha User", "", "")
+        val sortedIds = listOf(me.id, otherUser.id).sorted()
+        val chatId = "one_on_one_" + sortedIds[0].hashCode() + "_" + sortedIds[1].hashCode()
+
+        val allC = dao.getAllChats().firstOrNull() ?: emptyList()
+        val found = allC.firstOrNull { it.id == chatId }
+        if (found != null) {
+            return found
+        }
+
+        val chat = ChatEntity(
+            id = chatId,
+            title = otherUser.displayName.ifEmpty { otherUser.username.ifEmpty { "One-on-One Chat" } },
+            isGroup = false,
+            lastMessage = "Started conversation.",
+            lastMessageTime = System.currentTimeMillis(),
+            avatarUrl = otherUser.avatarUrl.ifEmpty { "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" }
+        )
+
+        dao.insertChat(chat)
+        return chat
+    }
+
     suspend fun sendMessage(chatId: String, content: String) {
         val user = dao.getCurrentUser().firstOrNull() ?: UserEntity("me", "Sigcha User", "", "")
         val timestamp = System.currentTimeMillis()

@@ -25,6 +25,12 @@ interface SigchaDao {
     @Query("SELECT * FROM users WHERE isCurrentUser = 1")
     fun getCurrentUser(): Flow<UserEntity?>
 
+    @Query("UPDATE users SET isCurrentUser = 0")
+    suspend fun clearCurrentUser()
+
+    @Query("SELECT * FROM users WHERE id = :email LIMIT 1")
+    suspend fun getUserByEmail(email: String): UserEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 

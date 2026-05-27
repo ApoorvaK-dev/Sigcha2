@@ -39,13 +39,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Custom beautiful color constants for the Sigcha Theme
-val SigchaTealDark = Color(0xFF005C4B)
-val SigchaTealLight = Color(0xFFE7FFDB)
-val SigchaTealBrand = Color(0xFF128C7E)
-val SigchaTealAccent = Color(0xFF25D366)
-val SigchaBackgroundDark = Color(0xFF0B141A)
-val SigchaCardDark = Color(0xFF202C33)
+// Custom beautiful color constants for the Sigcha Theme (Clean Minimalism Palette)
+val SigchaTealBrand = Color(0xFF6750A4)   // Deep Purple
+val SigchaTealAccent = Color(0xFF6750A4)  // Vibrant Accent Purple
+val SigchaTealLight = Color(0xFFE8DEF8)   // Soft Lavender Highlight
+val SigchaTealDark = Color(0xFF21005D)    // Midnight Violet
+
+val MinimalTextPrimary = Color(0xFF1D1B20)    // Dark Violet-Black
+val MinimalTextSecondary = Color(0xFF49454F)  // Slate Grey
+val MinimalBg = Color(0xFFFEF7FF)             // Airy Lilac-White
+val MinimalSurfaceVariant = Color(0xFFF3EDF7) // Pale M3 Lavender
+val MinimalOutline = Color(0xFFCAC4D0)        // Clean Border Outlines
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,124 +61,131 @@ fun SigchaAppBody(viewModel: SigchaViewModel) {
 
     var showCreateChatDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Sigcha",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 24.sp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        // Soft elegant status badge
-                        Surface(
-                            color = if (isConnected) SigchaTealAccent.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
+    if (currentUser == null) {
+        AuthenticationScreen(viewModel)
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = if (isConnected) "ONLINE" else "LOCAL CACHE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isConnected) SigchaTealAccent else Color.LightGray,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                text = "Sigcha",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 24.sp,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            // Soft elegant status badge
+                            Surface(
+                                color = if (isConnected) SigchaTealAccent.copy(alpha = 0.15f) else Color.Gray.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isConnected) "ONLINE" else "LOCAL CACHE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isConnected) SigchaTealAccent else Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { viewModel.navigateTo(Screen.Settings) },
+                            modifier = Modifier.testTag("settings_top_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isConnected) Icons.Default.Cloud else Icons.Default.CloudOff,
+                                contentDescription = "Cloud configurations",
+                                tint = if (isConnected) SigchaTealAccent else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                             )
                         }
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.navigateTo(Screen.Settings) },
-                        modifier = Modifier.testTag("settings_top_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isConnected) Icons.Default.Cloud else Icons.Default.CloudOff,
-                            contentDescription = "Cloud configurations",
-                            tint = if (isConnected) SigchaTealAccent else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                        )
-                    }
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Settings) }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings menu",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SigchaTealBrand,
-                    titleContentColor = Color.White
-                )
-            )
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 8.dp,
-                windowInsets = WindowInsets.navigationBars
-            ) {
-                NavigationBarItem(
-                    selected = currentScreen is Screen.ChatList || currentScreen is Screen.Conversation,
-                    onClick = { viewModel.navigateTo(Screen.ChatList) },
-                    icon = { Icon(imageVector = Icons.Default.Chat, contentDescription = "Chats") },
-                    label = { Text("Chats", fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.testTag("nav_chats")
-                )
-                NavigationBarItem(
-                    selected = currentScreen is Screen.SocialFeed,
-                    onClick = { viewModel.navigateTo(Screen.SocialFeed) },
-                    icon = { Icon(imageVector = Icons.Default.Share, contentDescription = "Social Feed") },
-                    label = { Text("Feed", fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.testTag("nav_feed")
-                )
-                NavigationBarItem(
-                    selected = currentScreen is Screen.Settings,
-                    onClick = { viewModel.navigateTo(Screen.Settings) },
-                    icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings", fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.testTag("nav_settings")
-                )
-            }
-        },
-        floatingActionButton = {
-            if (currentScreen is Screen.ChatList) {
-                FloatingActionButton(
-                    onClick = { showCreateChatDialog = true },
-                    containerColor = SigchaTealBrand,
-                    contentColor = Color.White,
-                    modifier = Modifier.testTag("fab_create_chat")
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Create New Chat")
-                }
-            }
-        },
-        modifier = Modifier.testTag("sigcha_main_layout")
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            AnimatedContent(
-                targetState = currentScreen,
-                transitionSpec = {
-                    fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                            fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
-                },
-                label = "ScreenTransition"
-            ) { targetState ->
-                when (targetState) {
-                    is Screen.ChatList -> ChatListScreen(viewModel)
-                    is Screen.Conversation -> ConversationScreen(
-                        viewModel = viewModel,
-                        screen = targetState
+                        IconButton(onClick = { viewModel.navigateTo(Screen.Settings) }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings menu",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
-                    is Screen.SocialFeed -> SocialFeedScreen(viewModel)
-                    is Screen.Settings -> SettingsScreen(viewModel)
+                )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    tonalElevation = 8.dp,
+                    windowInsets = WindowInsets.navigationBars
+                ) {
+                    NavigationBarItem(
+                        selected = currentScreen is Screen.ChatList || currentScreen is Screen.Conversation || currentScreen is Screen.ExploreUsers,
+                        onClick = { viewModel.navigateTo(Screen.ChatList) },
+                        icon = { Icon(imageVector = Icons.Default.Chat, contentDescription = "Chats") },
+                        label = { Text("Chats", fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.testTag("nav_chats")
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen is Screen.SocialFeed,
+                        onClick = { viewModel.navigateTo(Screen.SocialFeed) },
+                        icon = { Icon(imageVector = Icons.Default.Share, contentDescription = "Social Feed") },
+                        label = { Text("Feed", fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.testTag("nav_feed")
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen is Screen.Settings,
+                        onClick = { viewModel.navigateTo(Screen.Settings) },
+                        icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") },
+                        label = { Text("Settings", fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.testTag("nav_settings")
+                    )
+                }
+            },
+            floatingActionButton = {
+                if (currentScreen is Screen.ChatList) {
+                    FloatingActionButton(
+                        onClick = { showCreateChatDialog = true },
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.testTag("fab_create_chat")
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Create New Chat")
+                    }
+                }
+            },
+            modifier = Modifier.testTag("sigcha_main_layout")
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                AnimatedContent(
+                    targetState = currentScreen,
+                    transitionSpec = {
+                        fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
+                                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                    },
+                    label = "ScreenTransition"
+                ) { targetState ->
+                    when (targetState) {
+                        is Screen.ChatList -> ChatListScreen(viewModel)
+                        is Screen.Conversation -> ConversationScreen(
+                            viewModel = viewModel,
+                            screen = targetState
+                        )
+                        is Screen.SocialFeed -> SocialFeedScreen(viewModel)
+                        is Screen.Settings -> SettingsScreen(viewModel)
+                        is Screen.Authentication -> AuthenticationScreen(viewModel)
+                        is Screen.ExploreUsers -> ExploreUsersScreen(viewModel)
+                    }
                 }
             }
         }
@@ -226,13 +238,39 @@ fun ChatListScreen(viewModel: SigchaViewModel) {
         )
 
         // Status Stories Section
-        Text(
-            text = "Active Contacts",
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = SigchaTealBrand,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Active Contacts",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = SigchaTealBrand
+            )
+            TextButton(
+                onClick = { viewModel.navigateTo(Screen.ExploreUsers) },
+                modifier = Modifier.testTag("button_open_directory")
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = "User Directory Icon",
+                        modifier = Modifier.size(16.dp),
+                        tint = SigchaTealBrand
+                    )
+                    Text(
+                        text = "User Directory",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SigchaTealBrand
+                    )
+                }
+            }
+        }
 
         Row(
             modifier = Modifier
@@ -473,13 +511,13 @@ fun ConversationScreen(viewModel: SigchaViewModel, screen: Screen.Conversation) 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE5DDD5)) // Iconic WhatsApp beige-white background color
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Chat screen subheader bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SigchaTealBrand.copy(alpha = 0.08f))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -628,14 +666,14 @@ fun MessageBubbleItem(message: MessageEntity) {
             }
 
             Surface(
-                color = if (isMe) Color(0xFFDCF8C6) else Color.White, // Traditional WhatsApp bubble colors
+                color = if (isMe) Color(0xFFEADDFF) else Color(0xFFF3EDF7), // Elegant Clean Minimalism bubble colors
                 shape = RoundedCornerShape(
-                    topStart = 12.dp,
-                    topEnd = 12.dp,
-                    bottomStart = if (isMe) 12.dp else 0.dp,
-                    bottomEnd = if (isMe) 0.dp else 12.dp
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (isMe) 16.dp else 4.dp,
+                    bottomEnd = if (isMe) 4.dp else 16.dp
                 ),
-                shadowElevation = 1.dp
+                shadowElevation = 0.5.dp
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -904,21 +942,37 @@ fun SocialPostCard(post: PostEntity, onLikeClick: () -> Unit) {
 fun SettingsScreen(viewModel: SigchaViewModel) {
     val isConnected by viewModel.isFirestoreConnected.collectAsState()
     val context = LocalContext.current
+    val currentUser by viewModel.currentUser.collectAsState()
 
     // Fields for Custom credentials
     var fbProjectId by remember { mutableStateOf("") }
     var fbApiKey by remember { mutableStateOf("") }
     var fbAppId by remember { mutableStateOf("") }
 
-    var statusMessageState by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+
+    // Editable profile fields
+    var editUsername by remember { mutableStateOf("") }
+    var editDisplayName by remember { mutableStateOf("") }
+    var editBio by remember { mutableStateOf("") }
+    var editProfileUrl by remember { mutableStateOf("") }
+    var isEditingProfile by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val (pid, key, aid) = viewModel.getFirestoreCredentials()
         fbProjectId = pid
         fbApiKey = key
         fbAppId = aid
+    }
+
+    LaunchedEffect(currentUser) {
+        currentUser?.let {
+            editUsername = it.username.ifEmpty { it.id.take(8) }
+            editDisplayName = it.displayName
+            editBio = it.bio.ifEmpty { it.statusMessage }
+            editProfileUrl = it.profilePictureUrl.ifEmpty { it.avatarUrl }
+        }
     }
 
     LazyColumn(
@@ -940,40 +994,158 @@ fun SettingsScreen(viewModel: SigchaViewModel) {
 
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                modifier = Modifier.fillMaxWidth().testTag("profile_card"),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(SigchaTealBrand.copy(alpha = 0.2f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "User avatar",
-                            modifier = Modifier.size(36.dp),
-                            tint = SigchaTealBrand
+                    if (isEditingProfile) {
+                        Text("Edit Connection Profile Info", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = SigchaTealBrand)
+                        
+                        TextField(
+                            value = editDisplayName,
+                            onValueChange = { editDisplayName = it },
+                            label = { Text("Display Name") },
+                            modifier = Modifier.fillMaxWidth().testTag("profile_edit_displayName"),
+                            singleLine = true
                         )
-                    }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                        TextField(
+                            value = editUsername,
+                            onValueChange = { editUsername = it },
+                            label = { Text("Username") },
+                            modifier = Modifier.fillMaxWidth().testTag("profile_edit_username"),
+                            singleLine = true
+                        )
 
-                    Column {
-                        Text(
-                            text = "Sigcha User",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                        TextField(
+                            value = editBio,
+                            onValueChange = { editBio = it },
+                            label = { Text("Bio") },
+                            modifier = Modifier.fillMaxWidth().testTag("profile_edit_bio"),
+                            singleLine = true
                         )
-                        Text(
-                            text = "Status: Sleek and connection-focused.",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
+                        TextField(
+                            value = editProfileUrl,
+                            onValueChange = { editProfileUrl = it },
+                            label = { Text("Profile Picture URL") },
+                            modifier = Modifier.fillMaxWidth().testTag("profile_edit_photoUrl"),
+                            singleLine = true
                         )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = { isEditingProfile = false }) {
+                                Text("Cancel", color = Color.Gray)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    if (editUsername.isBlank() || editDisplayName.isBlank()) {
+                                        errorMessage = "Username and Display Name cannot be empty."
+                                        return@Button
+                                    }
+                                    viewModel.updateProfile(editUsername, editProfileUrl, editBio, editDisplayName) { success ->
+                                        if (success) {
+                                            isEditingProfile = false
+                                            successMessage = "Profile updated successfully!"
+                                            errorMessage = null
+                                        } else {
+                                            errorMessage = "Failed to update profile."
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SigchaTealBrand),
+                                modifier = Modifier.testTag("profile_save_btn")
+                            ) {
+                                Text("Save", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .background(SigchaTealBrand.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val url = currentUser?.avatarUrl ?: editProfileUrl
+                                if (!url.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = "User profile picture",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "User avatar",
+                                        modifier = Modifier.size(36.dp),
+                                        tint = SigchaTealBrand
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = currentUser?.displayName ?: "Sigcha User",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "@${currentUser?.username?.ifEmpty { currentUser?.id?.take(8) ?: "user" } ?: "user"}",
+                                    fontSize = 13.sp,
+                                    color = SigchaTealBrand,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = currentUser?.statusMessage?.ifEmpty { "Sleek and connection-focused." } ?: "Sleek and connection-focused.",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { isEditingProfile = true },
+                                modifier = Modifier.weight(1f).testTag("edit_profile_btn"),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, SigchaTealAccent.copy(alpha = 0.4f))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(Icons.Default.Edit, contentDescription = "", modifier = Modifier.size(16.dp))
+                                    Text("Edit Profile", fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.logout() },
+                                modifier = Modifier.weight(1f).testTag("sign_out_btn"),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = "", modifier = Modifier.size(16.dp))
+                                    Text("Sign Out", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1192,6 +1364,414 @@ fun CreateChatDialog(
                         modifier = Modifier.testTag("confirm_create_chat")
                     ) {
                         Text("Create", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuthenticationScreen(viewModel: SigchaViewModel) {
+    var isSignUpMode by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    
+    // Additional fields for sign up
+    var username by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var profilePictureUrl by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
+    
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 450.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Application Logo / Header
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(SigchaTealBrand.copy(alpha = 0.15f), RoundedCornerShape(18.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Sigcha Lock Shield",
+                        modifier = Modifier.size(40.dp),
+                        tint = SigchaTealBrand
+                    )
+                }
+                
+                Text(
+                    text = if (isSignUpMode) "Create Account" else "Welcome to Sigcha",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
+                Text(
+                    text = if (isSignUpMode) "Register your secure workspace keys" else "Log in to access your connections",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Fields
+                TextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email Address") },
+                    modifier = Modifier.fillMaxWidth().testTag("auth_email_input"),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+                
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Secure Password") },
+                    modifier = Modifier.fillMaxWidth().testTag("auth_password_input"),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background
+                    ),
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                )
+                
+                if (isSignUpMode) {
+                    TextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Unique Username") },
+                        modifier = Modifier.fillMaxWidth().testTag("auth_username_input"),
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                    
+                    TextField(
+                        value = displayName,
+                        onValueChange = { displayName = it },
+                        label = { Text("Display Name") },
+                        modifier = Modifier.fillMaxWidth().testTag("auth_displayName_input"),
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                    
+                    TextField(
+                        value = profilePictureUrl,
+                        onValueChange = { profilePictureUrl = it },
+                        label = { Text("Profile Picture URL") },
+                        placeholder = { Text("https://url_to_image...") },
+                        modifier = Modifier.fillMaxWidth().testTag("auth_photo_input"),
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                    
+                    TextField(
+                        value = bio,
+                        onValueChange = { bio = it },
+                        label = { Text("Custom Bio") },
+                        modifier = Modifier.fillMaxWidth().testTag("auth_bio_input"),
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                }
+                
+                if (errorMsg != null) {
+                    Text(
+                        text = errorMsg ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                
+                Button(
+                    onClick = {
+                        if (email.isBlank() || password.isBlank()) {
+                            errorMsg = "Email and Password are required."
+                            return@Button
+                        }
+                        if (isSignUpMode && username.isBlank()) {
+                            errorMsg = "Username is required for sign up."
+                            return@Button
+                        }
+                        
+                        isProcessing = true
+                        errorMsg = null
+                        
+                        if (isSignUpMode) {
+                            viewModel.signUp(
+                                email = email.trim().lowercase(),
+                                passwordPlain = password,
+                                username = username.trim(),
+                                profilePictureUrl = profilePictureUrl.trim(),
+                                bio = bio.trim(),
+                                displayName = displayName.trim(),
+                                onResult = { success, errMsg ->
+                                    isProcessing = false
+                                    if (success) {
+                                        // Auto log in after success
+                                        viewModel.login(email.trim().lowercase(), password) { _, _ -> }
+                                    } else {
+                                        errorMsg = errMsg ?: "Signup registration failed."
+                                    }
+                                }
+                            )
+                        } else {
+                            viewModel.login(email.trim().lowercase(), password) { success, errMsg ->
+                                isProcessing = false
+                                if (!success) {
+                                    errorMsg = errMsg ?: "Login verification failed."
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("auth_submit_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = SigchaTealBrand),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isProcessing
+                ) {
+                    if (isProcessing) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text(
+                            text = if (isSignUpMode) "Sign Up" else "Log In",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
+                
+                TextButton(
+                    onClick = {
+                        isSignUpMode = !isSignUpMode
+                        errorMsg = null
+                    },
+                    modifier = Modifier.testTag("auth_mode_toggle")
+                ) {
+                    Text(
+                        text = if (isSignUpMode) "Already have an account? Log In" else "Don't have an account? Sign Up",
+                        color = SigchaTealBrand,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExploreUsersScreen(viewModel: SigchaViewModel) {
+    var searchContactQuery by remember { mutableStateOf("") }
+    var registeredContacts by remember { mutableStateOf<List<UserEntity>>(emptyList()) }
+    var isLoadingContacts by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchRegisteredUsers { list ->
+            registeredContacts = list
+            isLoadingContacts = false
+        }
+    }
+
+    val filteredContacts = registeredContacts.filter {
+        it.displayName.contains(searchContactQuery, ignoreCase = true) ||
+                it.username.contains(searchContactQuery, ignoreCase = true)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Upper search header with elegant Back action
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IconButton(
+                onClick = { viewModel.navigateTo(Screen.ChatList) },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Go Back",
+                    tint = SigchaTealBrand
+                )
+            }
+            Text(
+                text = "Registered Directory",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        // Beautiful Search Bar
+        TextField(
+            value = searchContactQuery,
+            onValueChange = { searchContactQuery = it },
+            placeholder = { Text("Search system directory...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .border(2.dp, SigchaTealBrand.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                .testTag("directory_search_input"),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = SigchaTealBrand) },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (isLoadingContacts) {
+            Box(
+                modifier = Modifier.fillMaxSize().weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = SigchaTealBrand)
+            }
+        } else if (filteredContacts.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().weight(1f).padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.People, contentDescription = "Empty users list icon", modifier = Modifier.size(48.dp), tint = Color.Gray)
+                    Text("No other connection profiles found.", fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Introduce matching workspace keys first or verify network connectivity.", fontSize = 12.sp, color = Color.Gray)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(filteredContacts) { user ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.startOneOnOneChat(user) }
+                            .testTag("directory_contact_${user.id}"),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .background(SigchaTealBrand.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (user.avatarUrl.isNotEmpty()) {
+                                    AsyncImage(
+                                        model = user.avatarUrl,
+                                        contentDescription = user.displayName,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                } else {
+                                    Text(
+                                        text = user.displayName.take(2).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = SigchaTealBrand,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = user.displayName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "@${user.username.ifEmpty { user.id.take(8) }}",
+                                    fontSize = 12.sp,
+                                    color = SigchaTealBrand,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = user.statusMessage.ifEmpty { "Available on Sigcha" },
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.60f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.startOneOnOneChat(user) },
+                                modifier = Modifier.background(SigchaTealBrand.copy(alpha = 0.10f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Message,
+                                    contentDescription = "Message this user",
+                                    tint = SigchaTealBrand,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

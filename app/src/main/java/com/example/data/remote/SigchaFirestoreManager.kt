@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.example.data.model.MessageEntity
 import com.example.data.model.PostEntity
+import com.example.data.model.UserEntity
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.DocumentChange
@@ -104,6 +105,202 @@ class SigchaFirestoreManager(private val context: Context) {
         val apiKey = sharedPrefs.getString("fb_api_key", "") ?: ""
         val appId = sharedPrefs.getString("fb_app_id", "") ?: ""
         return Triple(projectId, apiKey, appId)
+    }
+
+    // --- Secure Hashing Helper ---
+    fun hashPassword(password: String): String {
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(password.toByteArray(Charsets.UTF_8))
+            val hexString = java.lang.StringBuilder()
+            for (b in hash) {
+                val hex = java.lang.Integer.toHexString(0xff and b.toInt())
+                if (hex.length == 1) hexString.append('0')
+                hexString.append(hex)
+            }
+            hexString.toString()
+        } catch (ex: java.lang.Exception) {
+            password
+        }
+    }
+
+    // --- Authentication & Profiles ---
+    fun registerUserInFirestore(
+        email: String,
+        passwordPlain: String,
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onComplete: (Boolean, String?) -> Unit
+    ) {
+        val currentDb = db
+        if (currentDb == null) {
+            onComplete(false, "Firestore is not connected. Registering locally only.")
+            return
+        }
+
+        val hashedPassword = hashPassword(passwordPlain)
+        val userData = hashMapOf(
+            "id" to email,
+            "username" to username,
+            "displayName" to displayName,
+            "profilePictureUrl" to profilePictureUrl,
+            "bio" to bio,
+            "statusMessage" to bio,
+            "avatarUrl" to profilePictureUrl,
+            "passwordHash" to hashedPassword
+        )
+
+        currentDb.collection("users")
+            .document(email)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    onComplete(false, "User with this email already exists.")
+                } else {
+                    currentDb.collection("users")
+                        .document(email)
+                        .set(userData)
+                        .addOnSuccessListener {
+                            onComplete(true, null)
+                        }
+                        .addOnFailureListener { e ->
+                            onComplete(false, e.localizedMessage)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                onComplete(false, e.localizedMessage)
+            }
+    }
+
+    fun loginUserInFirestore(
+        email: String,
+        passwordPlain: String,
+        onComplete: (UserEntity?, String?) -> Unit
+    ) {
+        val currentDb = db
+        if (currentDb == null) {
+            onComplete(null, "Firestore is not connected. Connecting locally.")
+            return
+        }
+
+        val hashedPassword = hashPassword(passwordPlain)
+
+        currentDb.collection("users")
+            .document(email)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val dbHash = doc.getString("passwordHash") ?: ""
+                    if (dbHash == hashedPassword) {
+                        val username = doc.getString("username") ?: ""
+                        val displayName = doc.getString("displayName") ?: ""
+                        val statusMessage = doc.getString("statusMessage") ?: doc.getString("bio") ?: ""
+                        val avatarUrl = doc.getString("avatarUrl") ?: doc.getString("profilePictureUrl") ?: ""
+                        val bio = doc.getString("bio") ?: ""
+                        val profilePictureUrl = doc.getString("profilePictureUrl") ?: ""
+
+                        val user = UserEntity(
+                            id = email,
+                            displayName = displayName.ifEmpty { username },
+                            statusMessage = statusMessage,
+                            avatarUrl = avatarUrl,
+                            isCurrentUser = true,
+                            username = username,
+                            bio = bio,
+                            profilePictureUrl = profilePictureUrl,
+                            passwordHash = dbHash
+                        )
+                        onComplete(user, null)
+                    } else {
+                        onComplete(null, "Invalid secure credentials.")
+                    }
+                } else {
+                    onComplete(null, "Account not found.")
+                }
+            }
+            .addOnFailureListener { e ->
+                onComplete(null, e.localizedMessage)
+            }
+    }
+
+    fun updateUserProfileInFirestore(
+        email: String,
+        username: String,
+        profilePictureUrl: String,
+        bio: String,
+        displayName: String,
+        onComplete: (Boolean) -> Unit
+    ) {
+        val currentDb = db ?: run {
+            onComplete(false)
+            return
+        }
+
+        val updates = hashMapOf<String, Any>(
+            "username" to username,
+            "profilePictureUrl" to profilePictureUrl,
+            "bio" to bio,
+            "statusMessage" to bio,
+            "avatarUrl" to profilePictureUrl,
+            "displayName" to displayName
+        )
+
+        currentDb.collection("users")
+            .document(email)
+            .update(updates)
+            .addOnSuccessListener {
+                onComplete(true)
+            }
+            .addOnFailureListener {
+                onComplete(false)
+            }
+    }
+
+    fun fetchAllRegisteredUsers(onComplete: (List<UserEntity>) -> Unit) {
+        val currentDb = db
+        if (currentDb == null) {
+            onComplete(emptyList())
+            return
+        }
+
+        currentDb.collection("users")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val users = arrayListOf<UserEntity>()
+                for (doc in snapshot.documents) {
+                    try {
+                        val email = doc.id
+                        val username = doc.getString("username") ?: ""
+                        val displayName = doc.getString("displayName") ?: username
+                        val bio = doc.getString("bio") ?: doc.getString("statusMessage") ?: ""
+                        val profilePictureUrl = doc.getString("profilePictureUrl") ?: doc.getString("avatarUrl") ?: ""
+                        val passwordHash = doc.getString("passwordHash") ?: ""
+
+                        users.add(
+                            UserEntity(
+                                id = email,
+                                displayName = displayName,
+                                statusMessage = bio,
+                                avatarUrl = profilePictureUrl,
+                                isCurrentUser = false,
+                                username = username,
+                                bio = bio,
+                                profilePictureUrl = profilePictureUrl,
+                                passwordHash = passwordHash
+                            )
+                        )
+                    } catch (e: Exception) {
+                        Log.e("SigchaFirestore", "Error mapping user document", e)
+                    }
+                }
+                onComplete(users)
+            }
+            .addOnFailureListener {
+                onComplete(emptyList())
+            }
     }
 
     // --- Messages Sync ---

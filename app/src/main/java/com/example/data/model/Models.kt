@@ -9,7 +9,11 @@ data class UserEntity(
     val displayName: String,
     val statusMessage: String,
     val avatarUrl: String,
-    val isCurrentUser: Boolean = false
+    val isCurrentUser: Boolean = false,
+    val username: String = "",
+    val bio: String = "",
+    val profilePictureUrl: String = "",
+    val passwordHash: String = ""
 )
 
 @Entity(tableName = "chats")
